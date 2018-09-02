@@ -26,9 +26,27 @@ app.get('/token', (req, res) => {
   res.status(200).send();
 });
 
+app.get('/notebooks', (req, res) => {
+  const graph = createGraphClient();
+  getAll(graph, graph
+    .api('/me/onenote/notebooks')
+    .version('v1.0')
+    .orderby('displayName')
+  ).then(data => sendJSON(res, data));
+});
+
+app.get('/sections', (req, res) => {
+  const graph = createGraphClient();
+  getAll(graph, graph
+    .api('/me/onenote/sections')
+    .version('v1.0')
+    .orderby('displayName')
+  ).then(data => sendJSON(res, data));
+});
+
 app.get('/pages', (req, res) => {
   const graph = createGraphClient();
-  getAllPages(graph, graph
+  getAll(graph, graph
     .api('/me/onenote/pages')
     .version('v1.0')
     .orderby('title')
@@ -44,15 +62,14 @@ const createGraphClient = () => MicrosoftGraph.Client.init({
   debugLogging: true,
 });
 
-const getAllPages = (graph: MicrosoftGraph.Client,
-                     req: MicrosoftGraph.GraphRequest): Promise<any[]> =>
+const getAll = (graph: MicrosoftGraph.Client,
+                req: MicrosoftGraph.GraphRequest): Promise<any[]> =>
   req.get().then(data => {
     const nextLink = data['@odata.nextLink'];
     const values: any[] = data.value;
     if (nextLink) {
-      return getAllPages(graph, graph.api(nextLink)).then(nextValues => 
-        values.concat(nextValues)
-      );
+      return getAll(graph, graph.api(nextLink))
+        .then(nextValues => values.concat(nextValues));
     } else {
       return Promise.resolve(values);
     }
