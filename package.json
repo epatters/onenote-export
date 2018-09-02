@@ -1,0 +1,23 @@
+{
+  "name": "onenote-export",
+  "version": "0.1.0",
+  "description": "OneNote Export",
+  "main": "build/main.js",
+  "types": "src/main.ts",
+  "scripts": {
+    "build": "./node_modules/typescript/bin/tsc",
+    "serve": "node ./build/main.js"
+  },
+  "author": "Evan Patterson",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "@microsoft/microsoft-graph-client": "^1.2.0",
+    "@microsoft/microsoft-graph-types": "^1.4.0",
+    "@types/express": "^4.16.0",
+    "express": "^4.16.3"
+  },
+  "devDependencies": {
+    "typescript": "^3.0.3"
+  }
+}
