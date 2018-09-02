@@ -1,4 +1,5 @@
 import querystring from "querystring";
+import { Stream } from "stream";
 import { Promise } from "es6-promise";
 
 import Express from "express";
@@ -7,6 +8,7 @@ import MicrosoftGraph = require("@microsoft/microsoft-graph-client");
 const accessToken = process.env.ACCESS_TOKEN || "";
 const clientID = process.env.CLIENT_ID || "";
 const port = 3000;
+
 
 const app = Express();
 
@@ -53,6 +55,16 @@ app.get('/pages', (req, res) => {
   ).then(data => sendJSON(res, data));
 });
 
+app.get('/content', (req, res) => {
+  const graph = createGraphClient();
+  getAll(graph, graph
+    .api('/me/onenote/pages')
+    .version('v1.0')
+    .orderby('title')
+  ).then(pages => getAllContent(graph, pages))
+   .then(data => sendJSON(res, data))
+});
+
 app.listen(port, () => console.log(
   `OneNote Export server listening on port ${port}`));
 
@@ -71,9 +83,32 @@ const getAll = (graph: MicrosoftGraph.Client,
       return getAll(graph, graph.api(nextLink))
         .then(nextValues => values.concat(nextValues));
     } else {
-      return Promise.resolve(values);
+      return values;
     }
   });
+
+const getAllContent = (graph: MicrosoftGraph.Client, 
+                       pages: any[]): Promise<any[]> => {
+  if (pages.length === 0) {
+    return Promise.resolve([]);
+  } else {
+    const page = pages[0];
+    return new Promise<Stream>((resolve, reject) => {
+      graph.api(`/me/onenote/pages/${page.id}/content`)
+        .getStream((err, stream) => stream ? resolve(stream) : reject(err))
+    })
+    .then(stream => new Promise<string>((resolve, reject) => {
+      const chunks: any[] = [];
+      stream.on("data", chunk => chunks.push(chunk));
+      stream.on("end", () => resolve(Buffer.concat(chunks).toString()));
+    }))
+    .then(content => {
+      page.content = content;
+      return getAllContent(graph, pages.slice(1))
+        .then(nextPages => [page].concat(nextPages));
+    });
+  }
+};
 
 const sendJSON = (res: Express.Response, data: object) => {
   res.set('Content-Type', 'application/json');
